@@ -37,13 +37,18 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
-  // Protect the public MCP endpoint.
-  if (req.headers.authorization !== `Bearer ${MCP_API_KEY}`) {
-    res.writeHead(401, {
+  // Protect the public MCP endpoint with a static bearer token.
+  // Deliberately no WWW-Authenticate header and 403 instead of 401:
+  // a 401 + WWW-Authenticate: Bearer makes MCP clients assume OAuth 2.1 and
+  // attempt Dynamic Client Registration against /register, which this server
+  // does not implement.
+  const expected = `Bearer ${MCP_API_KEY}`;
+  const provided = req.headers.authorization;
+  if (typeof provided !== "string" || provided.trim() !== expected) {
+    res.writeHead(403, {
       "content-type": "application/json",
-      "www-authenticate": "Bearer",
     });
-    res.end(JSON.stringify({ error: "Unauthorized" }));
+    res.end(JSON.stringify({ error: "Invalid or missing bearer token" }));
     return;
   }
 
